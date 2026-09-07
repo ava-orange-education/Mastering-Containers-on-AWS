@@ -1,0 +1,18 @@
+# App Runner configuration file (placed in repository root)
+# Used when deploying from source code repository
+version: 1.0
+runtime: python312
+build:
+  commands:
+    build:
+      - pip install -r requirements.txt
+run:
+  command: gunicorn --bind 0.0.0.0:8080 --workers 2 app:app
+  network:
+    port: 8080
+    env: PORT
+  env:
+    - name: ENVIRONMENT
+      value: production
+    - name: LOG_LEVEL
+      value: INFO

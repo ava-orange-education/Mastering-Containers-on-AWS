@@ -1,0 +1,61 @@
+# Argo Workflow - End-to-End ML Pipeline
+# Book: Mastering Container Architectures on AWS - Chapter 11
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  name: ml-training-pipeline
+  namespace: ml-pipelines
+spec:
+  entrypoint: ml-pipeline
+  serviceAccountName: ml-pipeline-sa
+  templates:
+    - name: ml-pipeline
+      dag:
+        tasks:
+          - name: data-preprocessing
+            template: preprocess
+          - name: model-training
+            template: train
+            dependencies: [data-preprocessing]
+          - name: model-evaluation
+            template: evaluate
+            dependencies: [model-training]
+          - name: model-deployment
+            template: deploy
+            dependencies: [model-evaluation]
+
+    - name: preprocess
+      container:
+        image: 123456789012.dkr.ecr.us-east-1.amazonaws.com/ml-preprocess:1.0
+        command: [python, preprocess.py]
+        args: ["--input", "s3://raw-data/", "--output", "s3://processed-data/"]
+        resources:
+          requests: { cpu: "4", memory: 8Gi }
+
+    - name: train
+      container:
+        image: 123456789012.dkr.ecr.us-east-1.amazonaws.com/ml-training:1.0
+        command: [python, train.py]
+        args: ["--data", "s3://processed-data/", "--output", "s3://models/"]
+        resources:
+          requests: { cpu: "8", memory: 32Gi, nvidia.com/gpu: "4" }
+          limits: { nvidia.com/gpu: "4" }
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+
+    - name: evaluate
+      container:
+        image: 123456789012.dkr.ecr.us-east-1.amazonaws.com/ml-eval:1.0
+        command: [python, evaluate.py]
+        args: ["--model", "s3://models/latest/"]
+        resources:
+          requests: { cpu: "2", memory: 4Gi }
+
+    - name: deploy
+      container:
+        image: 123456789012.dkr.ecr.us-east-1.amazonaws.com/ml-deploy:1.0
+        command: [python, deploy.py]
+        args: ["--model", "s3://models/latest/", "--endpoint", "resnet-classifier"]
+        resources:
+          requests: { cpu: "1", memory: 2Gi }

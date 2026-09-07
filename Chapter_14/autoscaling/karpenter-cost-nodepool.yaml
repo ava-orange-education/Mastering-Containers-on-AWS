@@ -1,0 +1,43 @@
+# Karpenter NodePool Optimized for Cost
+# Prefers Spot, Graviton (ARM64), and enables consolidation
+# Book: Mastering Container Architectures on AWS - Chapter 14
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: cost-optimized
+spec:
+  template:
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: cost-optimized
+      requirements:
+        # Prefer Graviton instances (up to 40% better price-performance)
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["arm64", "amd64"]
+        # Prefer Spot instances (up to 90% savings)
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["spot", "on-demand"]
+        # Wide instance family selection for best Spot availability
+        - key: karpenter.k8s.aws/instance-family
+          operator: In
+          values: ["m7g", "m6g", "c7g", "c6g", "r7g", "r6g",
+                   "m7i", "m6i", "c7i", "c6i", "r7i", "r6i"]
+        - key: karpenter.k8s.aws/instance-generation
+          operator: Gt
+          values: ["5"]
+        - key: karpenter.k8s.aws/instance-size
+          operator: In
+          values: ["large", "xlarge", "2xlarge"]
+  limits:
+    cpu: 200
+    memory: 400Gi
+  # Consolidation: replace underutilized nodes with smaller ones
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 30s
+  # Budget: don't disrupt more than 20% of nodes at once
+  weight: 100  # Higher weight = preferred over other NodePools

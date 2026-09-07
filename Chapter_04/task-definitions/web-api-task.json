@@ -1,0 +1,61 @@
+{
+  "family": "web-api",
+  "taskRoleArn": "arn:aws:iam::123456789012:role/ecs-web-api-task-role",
+  "executionRoleArn": "arn:aws:iam::123456789012:role/ecsTaskExecutionRole",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "runtimePlatform": {
+    "cpuArchitecture": "X86_64",
+    "operatingSystemFamily": "LINUX"
+  },
+  "containerDefinitions": [
+    {
+      "name": "web-api",
+      "image": "123456789012.dkr.ecr.us-east-1.amazonaws.com/web-api:1.0.0",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8080,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        { "name": "ENVIRONMENT", "value": "production" },
+        { "name": "LOG_LEVEL", "value": "INFO" },
+        { "name": "PORT", "value": "8080" }
+      ],
+      "secrets": [
+        {
+          "name": "DATABASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:123456789012:secret:web-api/database-AbCdEf"
+        },
+        {
+          "name": "API_KEY",
+          "valueFrom": "arn:aws:ssm:us-east-1:123456789012:parameter/web-api/api-key"
+        }
+      ],
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/web-api",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "web-api",
+          "awslogs-create-group": "true"
+        }
+      },
+      "readonlyRootFilesystem": true,
+      "linuxParameters": {
+        "initProcessEnabled": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+# CloudWatch Logs Insights Queries for Container Platforms
+# Book: Mastering Container Architectures on AWS - Chapter 8
+
+# ---- Error Analysis ----
+# Find all ERROR level logs in the last hour
+fields @timestamp, @message
+| filter @message like /ERROR/
+| sort @timestamp desc
+| limit 100
+
+# Count errors by service
+fields @timestamp, service, level
+| filter level = "ERROR"
+| stats count(*) as error_count by service
+| sort error_count desc
+
+# ---- Latency Analysis ----
+# P50, P90, P99 latency by endpoint
+fields @timestamp, path, duration_ms
+| stats avg(duration_ms) as avg_latency,
+        pct(duration_ms, 50) as p50,
+        pct(duration_ms, 90) as p90,
+        pct(duration_ms, 99) as p99
+  by path
+| sort p99 desc
+
+# ---- Request Volume ----
+# Requests per minute over time
+fields @timestamp
+| stats count(*) as request_count by bin(1m)
+| sort @timestamp
+
+# ---- OOMKilled Investigation ----
+# Find containers that were OOMKilled
+fields @timestamp, @message
+| filter @message like /OOMKilled/ or @message like /out of memory/
+| sort @timestamp desc
+
+# ---- Slow Queries ----
+# Find requests taking more than 1 second
+fields @timestamp, path, duration_ms, request_id
+| filter duration_ms > 1000
+| sort duration_ms desc
+| limit 50

@@ -1,0 +1,27 @@
+# ArgoCD Application - Deploys manifests from Git to EKS
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: web-api
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/myorg/k8s-manifests
+    targetRevision: main
+    path: apps/web-api/overlays/production
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: production
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

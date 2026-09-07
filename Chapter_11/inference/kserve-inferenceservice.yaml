@@ -1,0 +1,34 @@
+# KServe InferenceService - Production Model Serving
+# Book: Mastering Container Architectures on AWS - Chapter 11
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: resnet-classifier
+  namespace: ml-inference
+  annotations:
+    serving.kserve.io/enable-prometheus-scraping: "true"
+spec:
+  predictor:
+    minReplicas: 1
+    maxReplicas: 10
+    scaleTarget: 5      # Target concurrent requests per replica
+    scaleMetric: concurrency
+    tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+    containers:
+      - name: kserve-container
+        image: 123456789012.dkr.ecr.us-east-1.amazonaws.com/resnet-serving:1.0.0
+        resources:
+          requests:
+            cpu: "2"
+            memory: 4Gi
+            nvidia.com/gpu: "1"
+          limits:
+            cpu: "4"
+            memory: 8Gi
+            nvidia.com/gpu: "1"
+        env:
+          - name: STORAGE_URI
+            value: s3://ml-models/resnet/v1

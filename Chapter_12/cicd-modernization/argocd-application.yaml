@@ -1,0 +1,36 @@
+# ArgoCD Application for GitOps-Based Deployment
+# Part of migration from imperative CI/CD to declarative GitOps
+# Book: Mastering Container Architectures on AWS - Chapter 12
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: web-api
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/myorg/k8s-manifests
+    targetRevision: main
+    path: apps/web-api/overlays/production
+    kustomize:
+      images:
+        - 123456789012.dkr.ecr.us-east-1.amazonaws.com/web-api
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: production
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

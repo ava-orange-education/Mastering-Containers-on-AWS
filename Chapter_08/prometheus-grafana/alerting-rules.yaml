@@ -1,0 +1,55 @@
+# Prometheus Alerting Rules for Container Platforms
+# Book: Mastering Container Architectures on AWS - Chapter 8
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: container-alerts
+  namespace: monitoring
+spec:
+  groups:
+    - name: pod-health
+      rules:
+        - alert: PodCrashLooping
+          expr: rate(kube_pod_container_status_restarts_total[15m]) * 60 * 5 > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is crash looping"
+            description: "Pod has restarted {{ $value | humanize }} times in the last 15 minutes"
+            runbook: "https://runbooks.example.com/crashloop"
+
+        - alert: PodOOMKilled
+          expr: kube_pod_container_status_last_terminated_reason{reason="OOMKilled"} == 1
+          for: 0m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Container {{ $labels.container }} in {{ $labels.namespace }}/{{ $labels.pod }} was OOMKilled"
+            description: "Increase memory limits or investigate memory leak"
+
+        - alert: HighPodCPU
+          expr: sum(rate(container_cpu_usage_seconds_total{container!=""}[5m])) by (namespace, pod) / sum(kube_pod_container_resource_limits{resource="cpu"}) by (namespace, pod) > 0.9
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} CPU usage above 90%"
+
+    - name: service-health
+      rules:
+        - alert: HighErrorRate
+          expr: sum(rate(http_requests_total{status=~"5.."}[5m])) by (service) / sum(rate(http_requests_total[5m])) by (service) > 0.05
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Service {{ $labels.service }} error rate above 5%"
+
+        - alert: HighLatencyP99
+          expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, service)) > 1
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Service {{ $labels.service }} p99 latency above 1 second"

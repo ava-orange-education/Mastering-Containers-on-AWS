@@ -1,0 +1,27 @@
+# Deploy latency-sensitive workloads to Local Zone nodes
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: edge-api
+  namespace: edge
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: edge-api
+  template:
+    metadata:
+      labels:
+        app: edge-api
+    spec:
+      nodeSelector:
+        location: local-zone
+      containers:
+        - name: edge-api
+          image: 123456789012.dkr.ecr.us-east-1.amazonaws.com/edge-api:1.0.0
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi

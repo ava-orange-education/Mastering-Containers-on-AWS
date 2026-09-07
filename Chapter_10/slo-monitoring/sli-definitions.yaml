@@ -1,0 +1,45 @@
+# SLI Recording Rules for SLO Monitoring
+# Book: Mastering Container Architectures on AWS - Chapter 10
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: sli-recording-rules
+  namespace: monitoring
+spec:
+  groups:
+    - name: sli-availability
+      interval: 30s
+      rules:
+        # Availability SLI: ratio of successful requests
+        - record: sli:availability:ratio
+          expr: |
+            sum(rate(http_requests_total{status!~"5.."}[5m])) by (service)
+            /
+            sum(rate(http_requests_total[5m])) by (service)
+
+        # Latency SLI: ratio of requests under 500ms
+        - record: sli:latency:ratio
+          expr: |
+            sum(rate(http_request_duration_seconds_bucket{le="0.5"}[5m])) by (service)
+            /
+            sum(rate(http_request_duration_seconds_count[5m])) by (service)
+
+    - name: slo-error-budget
+      rules:
+        # Error budget remaining (SLO target: 99.9%)
+        - record: slo:error_budget:remaining
+          expr: |
+            1 - (
+              (1 - sli:availability:ratio) / (1 - 0.999)
+            )
+
+        # Error budget burn rate (1h window)
+        - alert: ErrorBudgetBurnRateHigh
+          expr: |
+            (1 - sli:availability:ratio) / (1 - 0.999) > 14.4
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Service {{ $labels.service }} is burning error budget 14.4x faster than allowed"
+            description: "At this rate, the entire monthly error budget will be consumed in ~2 hours"

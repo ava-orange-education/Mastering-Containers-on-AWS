@@ -1,0 +1,52 @@
+# .dockerignore - Exclude files from Docker build context
+# This reduces build context size and prevents sensitive files from being included
+
+# Version control
+.git
+.gitignore
+
+# Python artifacts
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+.eggs
+dist
+build
+
+# Virtual environments
+venv
+.venv
+env
+
+# IDE files
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker files (not needed inside the image)
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Documentation
+README.md
+LICENSE
+docs/
+
+# Test files
+tests/
+*.test.py
+.pytest_cache
+.coverage
+
+# Environment files (NEVER include secrets in images)
+.env
+.env.*
+*.pem
+*.key

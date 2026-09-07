@@ -1,0 +1,38 @@
+{
+  "_description": "Original ECS Task Definition (to be migrated to EKS)",
+  "family": "web-api",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::123456789012:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::123456789012:role/web-api-task-role",
+  "containerDefinitions": [
+    {
+      "name": "web-api",
+      "image": "123456789012.dkr.ecr.us-east-1.amazonaws.com/web-api:1.0.0",
+      "portMappings": [{ "containerPort": 8080 }],
+      "environment": [
+        { "name": "ENVIRONMENT", "value": "production" },
+        { "name": "PORT", "value": "8080" }
+      ],
+      "secrets": [
+        { "name": "DATABASE_URL", "valueFrom": "arn:aws:secretsmanager:us-east-1:123456789012:secret:db-url" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/web-api",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3
+      }
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+# Kyverno Policy: Verify image signatures before deployment
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-image-signatures
+spec:
+  validationFailureAction: Enforce
+  rules:
+    - name: verify-cosign-signature
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+      verifyImages:
+        - imageReferences:
+            - "123456789012.dkr.ecr.us-east-1.amazonaws.com/*"
+          attestors:
+            - entries:
+                - keyless:
+                    subject: "*@myorg.com"
+                    issuer: "https://token.actions.githubusercontent.com"
+                    rekor:
+                      url: https://rekor.sigstore.dev

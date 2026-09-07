@@ -1,0 +1,59 @@
+# vLLM with RayServe - LLM Inference on EKS
+# Book: Mastering Container Architectures on AWS - Chapter 11
+apiVersion: ray.io/v1
+kind: RayService
+metadata:
+  name: llm-serving
+  namespace: ml-inference
+spec:
+  serviceUnhealthySecondThreshold: 300
+  deploymentUnhealthySecondThreshold: 300
+  serveConfigV2: |
+    applications:
+      - name: llm
+        import_path: serve_llm:deployment
+        runtime_env:
+          pip:
+            - vllm>=0.6.0
+            - ray[serve]
+        deployments:
+          - name: VLLMDeployment
+            num_replicas: 1
+            ray_actor_options:
+              num_gpus: 4
+              num_cpus: 8
+  rayClusterConfig:
+    headGroupSpec:
+      rayStartParams:
+        dashboard-host: "0.0.0.0"
+      template:
+        spec:
+          containers:
+            - name: ray-head
+              image: rayproject/ray-ml:2.41.0-py310-gpu
+              resources:
+                requests:
+                  cpu: "4"
+                  memory: 16Gi
+    workerGroupSpecs:
+      - groupName: gpu-workers
+        replicas: 1
+        minReplicas: 1
+        maxReplicas: 4
+        rayStartParams: {}
+        template:
+          spec:
+            tolerations:
+              - key: nvidia.com/gpu
+                operator: Exists
+                effect: NoSchedule
+            containers:
+              - name: ray-worker
+                image: rayproject/ray-ml:2.41.0-py310-gpu
+                resources:
+                  requests:
+                    cpu: "8"
+                    memory: 32Gi
+                    nvidia.com/gpu: "4"
+                  limits:
+                    nvidia.com/gpu: "4"

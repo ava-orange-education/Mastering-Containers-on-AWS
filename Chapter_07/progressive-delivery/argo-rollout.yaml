@@ -1,0 +1,61 @@
+# Argo Rollouts - Canary Deployment with Automated Analysis
+# Book: Mastering Container Architectures on AWS - Chapter 7
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: web-api
+  namespace: production
+spec:
+  replicas: 5
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: web-api
+  template:
+    metadata:
+      labels:
+        app: web-api
+    spec:
+      containers:
+        - name: web-api
+          image: 123456789012.dkr.ecr.us-east-1.amazonaws.com/web-api:1.0.0
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+  strategy:
+    canary:
+      steps:
+        - setWeight: 5
+        - pause: { duration: 2m }
+        - analysis:
+            templates:
+              - templateName: success-rate
+        - setWeight: 25
+        - pause: { duration: 2m }
+        - setWeight: 50
+        - pause: { duration: 5m }
+        - setWeight: 100
+      canaryService: web-api-canary
+      stableService: web-api-stable
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: success-rate
+  namespace: production
+spec:
+  metrics:
+    - name: success-rate
+      interval: 30s
+      count: 5
+      successCondition: result[0] >= 0.95
+      failureLimit: 2
+      provider:
+        prometheus:
+          address: http://prometheus.monitoring:9090
+          query: |
+            sum(rate(http_requests_total{app="web-api",status=~"2.."}[5m])) /
+            sum(rate(http_requests_total{app="web-api"}[5m]))

@@ -1,0 +1,15 @@
+{
+  "PolicyName": "cpu-target-tracking",
+  "ServiceNamespace": "ecs",
+  "ResourceId": "service/production-cluster/web-api-service",
+  "ScalableDimension": "ecs:service:DesiredCount",
+  "PolicyType": "TargetTrackingScaling",
+  "TargetTrackingScalingPolicyConfiguration": {
+    "PredefinedMetricSpecification": {
+      "PredefinedMetricType": "ECSServiceAverageCPUUtilization"
+    },
+    "TargetValue": 70.0,
+    "ScaleInCooldown": 300,
+    "ScaleOutCooldown": 60
+  }
+}

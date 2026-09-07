@@ -1,0 +1,59 @@
+# CronJob to Scale Non-Production Environments to Zero
+# Saves ~66% cost by shutting down dev/staging outside business hours
+# Book: Mastering Container Architectures on AWS - Chapter 14
+
+# Scale down at 8 PM (Mon-Fri)
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: scale-down-nonprod
+  namespace: platform
+spec:
+  schedule: "0 20 * * 1-5"  # 8 PM Mon-Fri
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: scaler
+          containers:
+            - name: scaler
+              image: bitnami/kubectl:latest
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  for ns in development staging; do
+                    for deploy in $(kubectl get deploy -n $ns -o name); do
+                      kubectl scale $deploy -n $ns --replicas=0
+                    done
+                  done
+                  echo "Non-prod scaled to zero"
+          restartPolicy: OnFailure
+---
+# Scale up at 8 AM (Mon-Fri)
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: scale-up-nonprod
+  namespace: platform
+spec:
+  schedule: "0 8 * * 1-5"  # 8 AM Mon-Fri
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: scaler
+          containers:
+            - name: scaler
+              image: bitnami/kubectl:latest
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  for ns in development staging; do
+                    for deploy in $(kubectl get deploy -n $ns -o name); do
+                      kubectl scale $deploy -n $ns --replicas=2
+                    done
+                  done
+                  echo "Non-prod scaled up"
+          restartPolicy: OnFailure

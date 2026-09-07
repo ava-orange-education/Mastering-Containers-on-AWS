@@ -1,0 +1,33 @@
+# KEDA ScaledObject - Scale based on SQS Queue Depth (including to zero)
+# Book: Mastering Container Architectures on AWS - Chapter 14
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: queue-worker-scaler
+  namespace: production
+spec:
+  scaleTargetRef:
+    name: queue-worker  # Deployment name
+  minReplicaCount: 0    # Scale to zero when queue is empty!
+  maxReplicaCount: 50
+  pollingInterval: 15   # Check every 15 seconds
+  cooldownPeriod: 60    # Wait 60s after last trigger before scaling down
+  triggers:
+    - type: aws-sqs-queue
+      authenticationRef:
+        name: keda-aws-credentials
+      metadata:
+        queueURL: https://sqs.us-east-1.amazonaws.com/123456789012/task-queue
+        queueLength: "5"        # Target 5 messages per replica
+        awsRegion: us-east-1
+        identityOwner: operator
+---
+# KEDA TriggerAuthentication for AWS
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: keda-aws-credentials
+  namespace: production
+spec:
+  podIdentity:
+    provider: aws-eks  # Uses IRSA for authentication

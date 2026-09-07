@@ -1,0 +1,32 @@
+# ============================================================================
+# Hardened Dockerfile - Security Best Practices
+# Book: Mastering Container Architectures on AWS - Chapter 9
+#
+# Security measures:
+#   1. Distroless base image (no shell, no package manager)
+#   2. Multi-stage build (no build tools in runtime)
+#   3. Non-root user
+#   4. Read-only root filesystem compatible
+#   5. No secrets in image layers
+#   6. Specific version tags (not :latest)
+#   7. Minimal layers
+# ============================================================================
+
+# Build stage
+FROM golang:1.23-alpine AS builder
+RUN apk add --no-cache ca-certificates
+WORKDIR /build
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /app/server
+
+# Runtime stage - distroless has no shell, no package manager
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=builder /app/server /server
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+
+# Run as nonroot user (UID 65534)
+USER nonroot:nonroot
+EXPOSE 8080
+ENTRYPOINT ["/server"]

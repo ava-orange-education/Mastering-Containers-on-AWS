@@ -1,0 +1,75 @@
+# Production EKS Platform Configuration
+# Book: Mastering Container Architectures on AWS - Chapter 10
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+metadata:
+  name: production-platform
+  region: us-east-1
+  version: "1.31"
+  tags:
+    environment: production
+    cost-center: platform-engineering
+
+iam:
+  withOIDC: true
+
+vpc:
+  cidr: 10.0.0.0/16
+  nat:
+    gateway: HighlyAvailable
+  clusterEndpoints:
+    publicAccess: true
+    privateAccess: true
+
+managedNodeGroups:
+  - name: system
+    instanceType: m7g.large
+    desiredCapacity: 3
+    minSize: 3
+    maxSize: 6
+    privateNetworking: true
+    labels: { role: system }
+    taints:
+      - key: CriticalAddonsOnly
+        value: "true"
+        effect: NoSchedule
+
+  - name: application
+    instanceTypes: [m7g.xlarge, m7i.xlarge, m6g.xlarge]
+    desiredCapacity: 3
+    minSize: 2
+    maxSize: 20
+    privateNetworking: true
+    labels: { role: application }
+    spot: false
+
+  - name: spot-workers
+    instanceTypes: [m7g.xlarge, m7i.xlarge, m6g.xlarge, c7g.xlarge]
+    desiredCapacity: 2
+    minSize: 0
+    maxSize: 30
+    privateNetworking: true
+    labels: { role: spot-worker, lifecycle: spot }
+    taints:
+      - key: spot
+        value: "true"
+        effect: NoSchedule
+    spot: true
+
+addons:
+  - name: vpc-cni
+    version: latest
+    configurationValues: '{"enableNetworkPolicy": "true"}'
+  - name: coredns
+    version: latest
+  - name: kube-proxy
+    version: latest
+  - name: aws-ebs-csi-driver
+    version: latest
+    wellKnownPolicies:
+      ebsCSIController: true
+
+cloudWatch:
+  clusterLogging:
+    enableTypes: [api, audit, authenticator, controllerManager, scheduler]
+    logRetentionInDays: 90

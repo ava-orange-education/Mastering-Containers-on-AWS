@@ -1,0 +1,38 @@
+# Prometheus with Remote Write to Amazon Managed Prometheus (AMP)
+# For edge clusters with limited bandwidth
+# Book: Mastering Container Architectures on AWS - Chapter 13
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: monitoring
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 30s    # Less frequent scraping to reduce bandwidth
+      evaluation_interval: 30s
+
+    remote_write:
+      - url: https://aps-workspaces.us-east-1.amazonaws.com/workspaces/ws-xxxxx/api/v1/remote_write
+        sigv4:
+          region: us-east-1
+        queue_config:
+          max_samples_per_send: 1000
+          batch_send_deadline: 30s
+          min_backoff: 100ms
+          max_backoff: 5s
+          capacity: 10000
+        write_relabel_configs:
+          # Only send critical metrics to cloud to save bandwidth
+          - source_labels: [__name__]
+            regex: 'container_cpu_usage_seconds_total|container_memory_usage_bytes|kube_pod_status_phase|node_cpu_seconds_total|node_memory_MemAvailable_bytes'
+            action: keep
+
+    scrape_configs:
+      - job_name: 'kubernetes-pods'
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true

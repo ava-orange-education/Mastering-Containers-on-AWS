@@ -1,0 +1,26 @@
+# Pod Disruption Budgets for Zero-Downtime Operations
+# Book: Mastering Container Architectures on AWS - Chapter 10
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: web-api-pdb
+  namespace: production
+spec:
+  # At least 2 pods must remain available during voluntary disruptions
+  # (node drains, upgrades, Karpenter consolidation)
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: web-api
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: worker-pdb
+  namespace: production
+spec:
+  # Allow at most 1 pod to be unavailable at a time
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: worker

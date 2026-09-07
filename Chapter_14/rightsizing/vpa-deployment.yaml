@@ -1,0 +1,28 @@
+# Vertical Pod Autoscaler (VPA) in Recommendation Mode
+# Analyzes workload resource usage and suggests optimal requests/limits
+# Book: Mastering Container Architectures on AWS - Chapter 14
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: web-api-vpa
+  namespace: production
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: web-api
+  updatePolicy:
+    updateMode: "Off"  # Recommendation only (safe for production)
+  resourcePolicy:
+    containerPolicies:
+      - containerName: web-api
+        minAllowed:
+          cpu: 50m
+          memory: 64Mi
+        maxAllowed:
+          cpu: 2000m
+          memory: 4Gi
+        controlledResources: ["cpu", "memory"]
+# View recommendations:
+#   kubectl describe vpa web-api-vpa -n production
+# Look for the "Recommendation" section with target, lowerBound, upperBound

@@ -1,0 +1,32 @@
+# .NET Framework Deployment on Windows Nodes
+# Book: Mastering Container Architectures on AWS - Chapter 12
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dotnet-app
+  namespace: production
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: dotnet-app
+  template:
+    metadata:
+      labels:
+        app: dotnet-app
+    spec:
+      nodeSelector:
+        kubernetes.io/os: windows
+      tolerations:
+        - key: os
+          value: windows
+          effect: NoSchedule
+      containers:
+        - name: dotnet-app
+          image: 123456789012.dkr.ecr.us-east-1.amazonaws.com/dotnet-app:1.0.0
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi

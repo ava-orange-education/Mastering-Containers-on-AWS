@@ -1,0 +1,54 @@
+{
+  "_description": "CloudWatch Alarms for ECS Service Monitoring - Chapter 4",
+  "alarms": [
+    {
+      "AlarmName": "ecs-web-api-high-cpu",
+      "AlarmDescription": "CPU utilization exceeds 80% for 5 minutes",
+      "Namespace": "AWS/ECS",
+      "MetricName": "CPUUtilization",
+      "Dimensions": [
+        { "Name": "ClusterName", "Value": "production-cluster" },
+        { "Name": "ServiceName", "Value": "web-api-service" }
+      ],
+      "Statistic": "Average",
+      "Period": 60,
+      "EvaluationPeriods": 5,
+      "Threshold": 80,
+      "ComparisonOperator": "GreaterThanThreshold",
+      "AlarmActions": ["arn:aws:sns:us-east-1:123456789012:ops-alerts"],
+      "TreatMissingData": "breaching"
+    },
+    {
+      "AlarmName": "ecs-web-api-high-memory",
+      "AlarmDescription": "Memory utilization exceeds 85% for 5 minutes",
+      "Namespace": "AWS/ECS",
+      "MetricName": "MemoryUtilization",
+      "Dimensions": [
+        { "Name": "ClusterName", "Value": "production-cluster" },
+        { "Name": "ServiceName", "Value": "web-api-service" }
+      ],
+      "Statistic": "Average",
+      "Period": 60,
+      "EvaluationPeriods": 5,
+      "Threshold": 85,
+      "ComparisonOperator": "GreaterThanThreshold",
+      "AlarmActions": ["arn:aws:sns:us-east-1:123456789012:ops-alerts"]
+    },
+    {
+      "AlarmName": "ecs-web-api-unhealthy-tasks",
+      "AlarmDescription": "Running task count below desired count for 3 minutes",
+      "Namespace": "ECS/ContainerInsights",
+      "MetricName": "RunningTaskCount",
+      "Dimensions": [
+        { "Name": "ClusterName", "Value": "production-cluster" },
+        { "Name": "ServiceName", "Value": "web-api-service" }
+      ],
+      "Statistic": "Average",
+      "Period": 60,
+      "EvaluationPeriods": 3,
+      "Threshold": 2,
+      "ComparisonOperator": "LessThanThreshold",
+      "AlarmActions": ["arn:aws:sns:us-east-1:123456789012:ops-alerts"]
+    }
+  ]
+}

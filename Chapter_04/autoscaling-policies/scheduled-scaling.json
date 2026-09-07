@@ -1,0 +1,29 @@
+{
+  "_comment": "Scheduled scaling for predictable traffic patterns",
+  "actions": [
+    {
+      "ScheduledActionName": "scale-up-business-hours",
+      "ServiceNamespace": "ecs",
+      "ResourceId": "service/production-cluster/web-api-service",
+      "ScalableDimension": "ecs:service:DesiredCount",
+      "Schedule": "cron(0 8 ? * MON-FRI *)",
+      "Timezone": "America/New_York",
+      "ScalableTargetAction": {
+        "MinCapacity": 6,
+        "MaxCapacity": 20
+      }
+    },
+    {
+      "ScheduledActionName": "scale-down-evening",
+      "ServiceNamespace": "ecs",
+      "ResourceId": "service/production-cluster/web-api-service",
+      "ScalableDimension": "ecs:service:DesiredCount",
+      "Schedule": "cron(0 20 ? * MON-FRI *)",
+      "Timezone": "America/New_York",
+      "ScalableTargetAction": {
+        "MinCapacity": 2,
+        "MaxCapacity": 6
+      }
+    }
+  ]
+}

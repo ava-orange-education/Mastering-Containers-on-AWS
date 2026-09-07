@@ -1,0 +1,82 @@
+# Fine-grained Network Policies for Microservice Communication
+# Book: Mastering Container Architectures on AWS - Chapter 9
+#
+# Architecture: frontend -> api-gateway -> order-service -> database
+# Each service can only communicate with its direct dependencies.
+
+# Default deny everything in the namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: production
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+# Allow DNS for all pods
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: production
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+---
+# API Gateway: accepts from ALB, can reach order-service
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-gateway-policy
+  namespace: production
+spec:
+  podSelector:
+    matchLabels:
+      app: api-gateway
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - ports:
+        - port: 8080
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: order-service
+      ports:
+        - port: 8080
+---
+# Order Service: accepts from api-gateway, can reach database
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: order-service-policy
+  namespace: production
+spec:
+  podSelector:
+    matchLabels:
+      app: order-service
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: api-gateway
+      ports:
+        - port: 8080
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: database
+      ports:
+        - port: 5432

@@ -1,0 +1,36 @@
+# Pod compliant with the "restricted" Pod Security Standard
+# This pod will pass PSA enforcement in restricted mode
+apiVersion: v1
+kind: Pod
+metadata:
+  name: secure-app
+  namespace: production
+spec:
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: app
+      image: 123456789012.dkr.ecr.us-east-1.amazonaws.com/app:1.0.0
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        capabilities:
+          drop: ["ALL"]
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 256Mi
+      volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+  volumes:
+    - name: tmp
+      emptyDir:
+        sizeLimit: 100Mi

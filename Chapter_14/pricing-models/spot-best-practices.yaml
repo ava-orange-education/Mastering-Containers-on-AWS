@@ -1,0 +1,49 @@
+# Deployment Configured for Spot Instance Resilience
+# Book: Mastering Container Architectures on AWS - Chapter 14
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spot-tolerant-worker
+  namespace: production
+spec:
+  replicas: 6
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+        lifecycle: spot
+    spec:
+      # Tolerate Spot instance taint
+      tolerations:
+        - key: karpenter.sh/capacity-type
+          operator: Equal
+          value: spot
+          effect: NoSchedule
+
+      # Spread across AZs for Spot diversity
+      topologySpreadConstraints:
+        - maxSkew: 2
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: worker
+
+      # Handle Spot interruption gracefully
+      terminationGracePeriodSeconds: 120
+
+      containers:
+        - name: worker
+          image: 123456789012.dkr.ecr.us-east-1.amazonaws.com/worker:1.0.0
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+          # Lifecycle hook for graceful shutdown on Spot interruption
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5 && kill -SIGTERM 1"]

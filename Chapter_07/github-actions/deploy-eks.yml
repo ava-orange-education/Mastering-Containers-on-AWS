@@ -1,0 +1,44 @@
+# GitHub Actions: Deploy to Amazon EKS
+name: Deploy to EKS
+
+on:
+  workflow_run:
+    workflows: ["Build and Push to ECR"]
+    types: [completed]
+    branches: [main]
+
+env:
+  AWS_REGION: us-east-1
+  EKS_CLUSTER: production-cluster
+  NAMESPACE: production
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::123456789012:role/github-actions-deploy-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name $EKS_CLUSTER --region $AWS_REGION
+
+      - name: Deploy to EKS
+        run: |
+          # Update image tag in deployment
+          kubectl set image deployment/web-api \
+            web-api=123456789012.dkr.ecr.$AWS_REGION.amazonaws.com/web-api:${{ github.sha }} \
+            -n $NAMESPACE
+
+          # Wait for rollout to complete
+          kubectl rollout status deployment/web-api -n $NAMESPACE --timeout=300s

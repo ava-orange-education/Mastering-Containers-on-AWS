@@ -1,0 +1,34 @@
+# Kyverno Policy: Require specific image tags (block :latest)
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-image-tag
+  annotations:
+    policies.kyverno.io/description: "Requires container images to use a specific tag, blocking :latest"
+spec:
+  validationFailureAction: Enforce
+  rules:
+    - name: require-image-tag
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+      validate:
+        message: "Container images must use a specific tag, not ':latest' or no tag."
+        pattern:
+          spec:
+            containers:
+              - image: "*:*"
+    - name: deny-latest-tag
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+      validate:
+        message: "The ':latest' tag is not allowed. Use a specific version tag."
+        deny:
+          conditions:
+            any:
+              - key: "{{ request.object.spec.containers[].image }}"
+                operator: AnyIn
+                value: ["*:latest"]

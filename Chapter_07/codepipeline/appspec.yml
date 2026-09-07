@@ -1,0 +1,15 @@
+# CodeDeploy AppSpec for ECS Blue/Green Deployment
+version: 0.0
+Resources:
+  - TargetService:
+      Type: AWS::ECS::Service
+      Properties:
+        TaskDefinition: <TASK_DEFINITION>
+        LoadBalancerInfo:
+          ContainerName: "web-api"
+          ContainerPort: 8080
+        PlatformVersion: "LATEST"
+Hooks:
+  - BeforeInstall: "LambdaFunctionToValidateBeforeTrafficShift"
+  - AfterInstall: "LambdaFunctionToValidateAfterTrafficShift"
+  - AfterAllowTestTraffic: "LambdaFunctionToRunIntegrationTests"

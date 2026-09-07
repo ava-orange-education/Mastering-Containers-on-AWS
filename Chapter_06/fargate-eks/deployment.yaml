@@ -1,0 +1,46 @@
+# Deployment optimized for Fargate on EKS
+# Note: Fargate doesn't support DaemonSets, hostNetwork, or privileged containers
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-api
+  namespace: production
+  labels:
+    app: web-api
+    compute: fargate  # Must match Fargate profile selector
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web-api
+      compute: fargate
+  template:
+    metadata:
+      labels:
+        app: web-api
+        compute: fargate
+    spec:
+      containers:
+        - name: web-api
+          image: 123456789012.dkr.ecr.us-east-1.amazonaws.com/web-api:1.0.0
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 500m       # Fargate allocates based on requests
+              memory: 1Gi
+            limits:
+              cpu: 1000m
+              memory: 2Gi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5

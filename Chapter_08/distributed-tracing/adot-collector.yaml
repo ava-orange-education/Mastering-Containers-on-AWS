@@ -1,0 +1,76 @@
+# AWS Distro for OpenTelemetry (ADOT) Collector
+# Receives traces via OTLP and exports to AWS X-Ray
+# Book: Mastering Container Architectures on AWS - Chapter 8
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: adot-collector-config
+  namespace: monitoring
+data:
+  config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    processors:
+      batch:
+        timeout: 5s
+        send_batch_size: 256
+      memory_limiter:
+        check_interval: 1s
+        limit_mib: 512
+    exporters:
+      awsxray:
+        region: us-east-1
+      awsemf:
+        region: us-east-1
+        namespace: ContainerApp
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [awsxray]
+        metrics:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [awsemf]
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: adot-collector
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: adot-collector
+  template:
+    metadata:
+      labels:
+        app: adot-collector
+    spec:
+      serviceAccountName: adot-collector
+      containers:
+        - name: collector
+          image: public.ecr.aws/aws-observability/aws-otel-collector:latest
+          ports:
+            - containerPort: 4317  # OTLP gRPC
+            - containerPort: 4318  # OTLP HTTP
+          volumeMounts:
+            - name: config
+              mountPath: /etc/otel
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: config
+          configMap:
+            name: adot-collector-config

@@ -1,0 +1,39 @@
+# Monolith Deployed as Kubernetes Deployment
+# First step of Strangler Fig pattern - containerize the monolith
+# Book: Mastering Container Architectures on AWS - Chapter 12
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: legacy-monolith
+  namespace: production
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: monolith
+  template:
+    metadata:
+      labels:
+        app: monolith
+        version: v1
+      annotations:
+        sidecar.istio.io/inject: "true"
+    spec:
+      containers:
+        - name: monolith
+          image: 123456789012.dkr.ecr.us-east-1.amazonaws.com/legacy-monolith:1.0.0
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: "1"
+              memory: 2Gi
+          envFrom:
+            - configMapRef:
+                name: monolith-config
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10

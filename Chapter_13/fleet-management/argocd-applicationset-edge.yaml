@@ -1,0 +1,62 @@
+# ArgoCD ApplicationSet for Multi-Cluster Edge Fleet Management
+# Generates one Application per edge cluster automatically
+# Book: Mastering Container Architectures on AWS - Chapter 13
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: edge-fleet
+  namespace: argocd
+spec:
+  generators:
+    - list:
+        elements:
+          - cluster: edge-factory-boston
+            url: https://edge-boston.example.com
+            region: us-east-1
+            tier: factory
+          - cluster: edge-factory-chicago
+            url: https://edge-chicago.example.com
+            region: us-east-2
+            tier: factory
+          - cluster: edge-retail-nyc
+            url: https://edge-nyc.example.com
+            region: us-east-1
+            tier: retail
+  template:
+    metadata:
+      name: "edge-apps-{{cluster}}"
+    spec:
+      project: edge-fleet
+      source:
+        repoURL: https://github.com/myorg/edge-manifests
+        targetRevision: main
+        path: "clusters/{{tier}}/overlays/{{cluster}}"
+      destination:
+        server: "{{url}}"
+        namespace: production
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        retry:
+          limit: 5
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 5m
+  strategy:
+    type: RollingSync
+    rollingSync:
+      steps:
+        - matchExpressions:
+            - key: cluster
+              operator: In
+              values: [edge-factory-boston]  # Canary location first
+        - matchExpressions:
+            - key: tier
+              operator: In
+              values: [factory]             # Then all factory locations
+        - matchExpressions:
+            - key: tier
+              operator: In
+              values: [retail]              # Then retail locations

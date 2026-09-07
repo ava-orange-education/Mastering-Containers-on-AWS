@@ -1,0 +1,80 @@
+# Kubernetes Equivalent of ECS Task Definition
+# Translation guide: ECS → EKS
+# Book: Mastering Container Architectures on AWS - Chapter 12
+#
+# ECS Concept          → Kubernetes Equivalent
+# Task Definition      → Deployment + Service
+# Container Definition → Pod spec container
+# Service              → Deployment + HPA
+# Task Role            → ServiceAccount with IRSA
+# Execution Role       → (handled by node/IRSA)
+# awsvpc networking    → Pod networking (default in EKS)
+# ALB Target Group     → Service + Ingress
+# CloudWatch Logs      → Fluent Bit DaemonSet
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: web-api
+  namespace: production
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/web-api-irsa-role
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-api
+  namespace: production
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web-api
+  template:
+    metadata:
+      labels:
+        app: web-api
+    spec:
+      serviceAccountName: web-api  # Replaces ECS Task Role
+      containers:
+        - name: web-api
+          image: 123456789012.dkr.ecr.us-east-1.amazonaws.com/web-api:1.0.0
+          ports:
+            - containerPort: 8080
+          resources:                 # Replaces ECS cpu/memory
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+          env:                       # Replaces ECS environment
+            - name: ENVIRONMENT
+              value: production
+            - name: PORT
+              value: "8080"
+            - name: DATABASE_URL     # Replaces ECS secrets
+              valueFrom:
+                secretKeyRef:
+                  name: web-api-secrets
+                  key: database-url
+          livenessProbe:             # Replaces ECS healthCheck
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-api
+  namespace: production
+spec:
+  selector:
+    app: web-api
+  ports:
+    - port: 80
+      targetPort: 8080

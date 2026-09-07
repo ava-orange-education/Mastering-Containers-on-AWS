@@ -1,0 +1,16 @@
+# Network debugging pod with common troubleshooting tools
+# Usage: kubectl apply -f network-debug-pod.yaml
+#        kubectl exec -it network-debug -- /bin/bash
+apiVersion: v1
+kind: Pod
+metadata:
+  name: network-debug
+  namespace: production
+spec:
+  containers:
+    - name: debug
+      image: nicolaka/netshoot:latest
+      command: ["sleep", "3600"]
+      # Available tools: curl, wget, nslookup, dig, ping,
+      # traceroute, tcpdump, netstat, ss, ip, iperf3
+  terminationGracePeriodSeconds: 0

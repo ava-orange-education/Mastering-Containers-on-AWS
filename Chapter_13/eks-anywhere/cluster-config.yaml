@@ -1,0 +1,31 @@
+# EKS Anywhere Cluster Configuration (Bare Metal)
+# For disconnected/on-premises environments
+# Book: Mastering Container Architectures on AWS - Chapter 13
+apiVersion: anywhere.eks.amazonaws.com/v1alpha1
+kind: Cluster
+metadata:
+  name: factory-edge-cluster
+spec:
+  clusterNetwork:
+    cniConfig:
+      cilium: {}
+    pods:
+      cidrBlocks: ["192.168.0.0/16"]
+    services:
+      cidrBlocks: ["10.96.0.0/12"]
+  controlPlaneConfiguration:
+    count: 3
+    endpoint:
+      host: "10.10.0.10"
+    machineGroupRef:
+      kind: TinkerbellMachineConfig
+      name: control-plane-machines
+  workerNodeGroupConfigurations:
+    - count: 5
+      machineGroupRef:
+        kind: TinkerbellMachineConfig
+        name: worker-machines
+      name: worker-nodes
+  kubernetesVersion: "1.31"
+  managementCluster:
+    name: factory-edge-cluster

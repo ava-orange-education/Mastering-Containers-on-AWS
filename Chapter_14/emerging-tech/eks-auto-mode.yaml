@@ -1,0 +1,22 @@
+# EKS Auto Mode - AWS manages nodes, scaling, and add-ons automatically
+# Simplifies EKS operations significantly
+# Book: Mastering Container Architectures on AWS - Chapter 14
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+metadata:
+  name: auto-mode-cluster
+  region: us-east-1
+  version: "1.31"
+
+autoModeConfig:
+  enabled: true
+  # EKS Auto Mode automatically:
+  # - Provisions and scales nodes based on workload demands
+  # - Selects optimal instance types (including Graviton)
+  # - Manages node OS patching and upgrades
+  # - Installs and manages add-ons (CoreDNS, kube-proxy, VPC CNI)
+  # - Enables GPU support when GPU workloads are detected
+  # - Consolidates underutilized nodes for cost optimization
+  nodePools:
+    - name: general-purpose
+    - name: system

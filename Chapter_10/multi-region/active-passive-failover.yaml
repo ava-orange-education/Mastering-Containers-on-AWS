@@ -1,0 +1,60 @@
+# Route53 Active-Passive Failover for Multi-Region Containers
+# Book: Mastering Container Architectures on AWS - Chapter 10
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Multi-Region Active-Passive Failover
+
+Parameters:
+  DomainName:
+    Type: String
+    Default: api.example.com
+  PrimaryALBDNS:
+    Type: String
+    Description: Primary region ALB DNS name
+  PrimaryALBHostedZone:
+    Type: String
+  SecondaryALBDNS:
+    Type: String
+    Description: Secondary region ALB DNS name
+  SecondaryALBHostedZone:
+    Type: String
+  HostedZoneId:
+    Type: String
+
+Resources:
+  PrimaryHealthCheck:
+    Type: AWS::Route53::HealthCheck
+    Properties:
+      HealthCheckConfig:
+        FullyQualifiedDomainName: !Ref PrimaryALBDNS
+        Port: 443
+        Type: HTTPS
+        ResourcePath: /health
+        RequestInterval: 10
+        FailureThreshold: 3
+
+  PrimaryRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      SetIdentifier: primary
+      Failover: PRIMARY
+      HealthCheckId: !Ref PrimaryHealthCheck
+      AliasTarget:
+        DNSName: !Ref PrimaryALBDNS
+        HostedZoneId: !Ref PrimaryALBHostedZone
+        EvaluateTargetHealth: true
+
+  SecondaryRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      SetIdentifier: secondary
+      Failover: SECONDARY
+      AliasTarget:
+        DNSName: !Ref SecondaryALBDNS
+        HostedZoneId: !Ref SecondaryALBHostedZone
+        EvaluateTargetHealth: true

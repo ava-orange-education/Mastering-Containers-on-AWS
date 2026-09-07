@@ -1,0 +1,39 @@
+# TopologySpreadConstraints for High Availability
+# Ensures pods are spread across AZs and nodes
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-api
+  namespace: production
+spec:
+  replicas: 6
+  selector:
+    matchLabels:
+      app: web-api
+  template:
+    metadata:
+      labels:
+        app: web-api
+    spec:
+      topologySpreadConstraints:
+        # Spread across availability zones
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: web-api
+        # Spread across nodes within each zone
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: web-api
+      containers:
+        - name: web-api
+          image: 123456789012.dkr.ecr.us-east-1.amazonaws.com/web-api:1.0.0
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi

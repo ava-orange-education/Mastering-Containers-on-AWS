@@ -1,0 +1,27 @@
+# ============================================================================
+# INSECURE Dockerfile - Common Anti-Patterns (DO NOT USE IN PRODUCTION)
+# Book: Mastering Container Architectures on AWS - Chapter 9
+#
+# This file demonstrates common security mistakes for educational purposes.
+# Each line is annotated with why it's problematic.
+# ============================================================================
+
+# ISSUE: Using :latest tag - not reproducible, may pull vulnerable version
+FROM ubuntu:latest
+
+# ISSUE: Running as root (default) - container escape gives host root access
+
+# ISSUE: Installing unnecessary packages increases attack surface
+RUN apt-get update && apt-get install -y \
+    curl wget vim netcat ssh sudo
+
+# ISSUE: Hardcoded secrets in image layers (visible via docker history)
+ENV DATABASE_PASSWORD=s3cret123
+ENV API_KEY=ak_live_12345abcdef
+
+# ISSUE: Copying entire directory including .env, .git, credentials
+COPY . /app
+
+# ISSUE: Running as root
+# ISSUE: Using shell form instead of exec form (no signal handling)
+CMD python /app/server.py

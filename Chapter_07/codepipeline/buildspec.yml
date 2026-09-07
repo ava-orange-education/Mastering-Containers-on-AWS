@@ -1,0 +1,45 @@
+# AWS CodeBuild Buildspec - Build, Scan, and Push Container Images
+# Book: Mastering Container Architectures on AWS - Chapter 7
+version: 0.2
+
+env:
+  variables:
+    AWS_REGION: us-east-1
+    IMAGE_REPO_NAME: web-api
+    IMAGE_TAG: latest
+  parameter-store:
+    DOCKERHUB_USERNAME: /codebuild/dockerhub/username
+    DOCKERHUB_PASSWORD: /codebuild/dockerhub/password
+
+phases:
+  pre_build:
+    commands:
+      - echo "Logging in to Amazon ECR..."
+      - AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+      - ECR_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_URI
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - IMAGE_TAG=${COMMIT_HASH:-latest}
+
+  build:
+    commands:
+      - echo "Building Docker image..."
+      - docker build -t ${IMAGE_REPO_NAME}:${IMAGE_TAG} .
+      - docker tag ${IMAGE_REPO_NAME}:${IMAGE_TAG} ${ECR_URI}/${IMAGE_REPO_NAME}:${IMAGE_TAG}
+      - docker tag ${IMAGE_REPO_NAME}:${IMAGE_TAG} ${ECR_URI}/${IMAGE_REPO_NAME}:latest
+
+  post_build:
+    commands:
+      - echo "Scanning image for vulnerabilities..."
+      - aws ecr start-image-scan --repository-name ${IMAGE_REPO_NAME} --image-id imageTag=${IMAGE_TAG} --region $AWS_REGION || true
+      - echo "Pushing image to ECR..."
+      - docker push ${ECR_URI}/${IMAGE_REPO_NAME}:${IMAGE_TAG}
+      - docker push ${ECR_URI}/${IMAGE_REPO_NAME}:latest
+      - echo "Generating image definitions for ECS deployment..."
+      - printf '[{"name":"web-api","imageUri":"%s"}]' ${ECR_URI}/${IMAGE_REPO_NAME}:${IMAGE_TAG} > imagedefinitions.json
+
+artifacts:
+  files:
+    - imagedefinitions.json
+    - appspec.yml
+    - taskdef.json

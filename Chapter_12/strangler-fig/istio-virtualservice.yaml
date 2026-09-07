@@ -1,0 +1,47 @@
+# Istio VirtualService for Strangler Fig Progressive Traffic Routing
+# Route /api/users to new microservice, everything else to monolith
+# Book: Mastering Container Architectures on AWS - Chapter 12
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: app-routing
+  namespace: production
+spec:
+  hosts:
+    - "api.example.com"
+  gateways:
+    - istio-system/main-gateway
+  http:
+    # Route extracted user-service traffic to new microservice
+    - match:
+        - uri:
+            prefix: /api/users
+      route:
+        - destination:
+            host: user-service
+            port:
+              number: 8080
+          weight: 100  # Start at 10, increase to 25, 50, 100
+
+    # Route extracted order-service traffic
+    - match:
+        - uri:
+            prefix: /api/orders
+      route:
+        - destination:
+            host: order-service
+            port:
+              number: 8080
+          weight: 50   # Canary: 50% to new service
+        - destination:
+            host: legacy-monolith
+            port:
+              number: 8080
+          weight: 50   # 50% still to monolith
+
+    # Everything else goes to the monolith
+    - route:
+        - destination:
+            host: legacy-monolith
+            port:
+              number: 8080

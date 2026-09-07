@@ -1,0 +1,28 @@
+{
+  "PolicyName": "request-count-step-scaling",
+  "ServiceNamespace": "ecs",
+  "ResourceId": "service/production-cluster/web-api-service",
+  "ScalableDimension": "ecs:service:DesiredCount",
+  "PolicyType": "StepScaling",
+  "StepScalingPolicyConfiguration": {
+    "AdjustmentType": "PercentChangeInCapacity",
+    "StepAdjustments": [
+      {
+        "MetricIntervalLowerBound": 0,
+        "MetricIntervalUpperBound": 25,
+        "ScalingAdjustment": 25
+      },
+      {
+        "MetricIntervalLowerBound": 25,
+        "MetricIntervalUpperBound": 50,
+        "ScalingAdjustment": 50
+      },
+      {
+        "MetricIntervalLowerBound": 50,
+        "ScalingAdjustment": 100
+      }
+    ],
+    "Cooldown": 60,
+    "MinAdjustmentMagnitude": 1
+  }
+}

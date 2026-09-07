@@ -1,0 +1,80 @@
+# ============================================================================
+# Production EKS Cluster Configuration - eksctl
+# Book: Mastering Container Architectures on AWS - Chapter 5
+# Usage: eksctl create cluster -f eksctl-cluster.yaml
+# ============================================================================
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: production-cluster
+  region: us-east-1
+  version: "1.31"
+  tags:
+    environment: production
+    managed-by: eksctl
+
+iam:
+  withOIDC: true  # Required for IRSA (IAM Roles for Service Accounts)
+
+vpc:
+  cidr: 10.0.0.0/16
+  nat:
+    gateway: HighlyAvailable  # One NAT GW per AZ for HA
+  clusterEndpoints:
+    publicAccess: true
+    privateAccess: true
+
+managedNodeGroups:
+  - name: app-nodes
+    instanceType: m6i.xlarge
+    desiredCapacity: 3
+    minSize: 2
+    maxSize: 10
+    volumeSize: 100
+    volumeType: gp3
+    privateNetworking: true
+    labels:
+      role: application
+    tags:
+      nodegroup-type: application
+    iam:
+      withAddonPolicies:
+        albIngress: true
+        cloudWatch: true
+        ebs: true
+
+  - name: system-nodes
+    instanceType: m6i.large
+    desiredCapacity: 2
+    minSize: 2
+    maxSize: 4
+    privateNetworking: true
+    labels:
+      role: system
+    taints:
+      - key: CriticalAddonsOnly
+        value: "true"
+        effect: NoSchedule
+
+addons:
+  - name: vpc-cni
+    version: latest
+  - name: coredns
+    version: latest
+  - name: kube-proxy
+    version: latest
+  - name: aws-ebs-csi-driver
+    version: latest
+    wellKnownPolicies:
+      ebsCSIController: true
+
+cloudWatch:
+  clusterLogging:
+    enableTypes:
+      - api
+      - audit
+      - authenticator
+      - controllerManager
+      - scheduler
+    logRetentionInDays: 30

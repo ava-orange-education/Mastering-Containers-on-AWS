@@ -1,0 +1,60 @@
+# Helm values for kube-prometheus-stack on EKS
+# Install: helm install prometheus prometheus-community/kube-prometheus-stack -f prometheus-values.yaml -n monitoring
+# Book: Mastering Container Architectures on AWS - Chapter 8
+prometheus:
+  prometheusSpec:
+    retention: 15d
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 50Gi
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+
+grafana:
+  enabled: true
+  adminPassword: "change-me-in-production"
+  persistence:
+    enabled: true
+    size: 10Gi
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: default
+          orgId: 1
+          folder: ''
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/default
+
+alertmanager:
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      group_by: ['alertname', 'namespace']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      receiver: 'slack'
+      routes:
+        - match:
+            severity: critical
+          receiver: 'pagerduty'
+    receivers:
+      - name: 'slack'
+        slack_configs:
+          - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+            channel: '#alerts'
+            title: '{{ .GroupLabels.alertname }}'
+            text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+      - name: 'pagerduty'
+        pagerduty_configs:
+          - service_key: 'YOUR_PAGERDUTY_KEY'

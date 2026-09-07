@@ -1,0 +1,53 @@
+{
+  "family": "api-with-sidecar",
+  "taskRoleArn": "arn:aws:iam::123456789012:role/ecs-api-task-role",
+  "executionRoleArn": "arn:aws:iam::123456789012:role/ecsTaskExecutionRole",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "containerDefinitions": [
+    {
+      "name": "api",
+      "image": "123456789012.dkr.ecr.us-east-1.amazonaws.com/api:1.0.0",
+      "essential": true,
+      "portMappings": [{ "containerPort": 8080, "protocol": "tcp" }],
+      "environment": [
+        { "name": "PORT", "value": "8080" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awsfirelens",
+        "options": {
+          "Name": "cloudwatch",
+          "region": "us-east-1",
+          "log_group_name": "/ecs/api-application",
+          "log_stream_prefix": "api"
+        }
+      },
+      "dependsOn": [
+        { "containerName": "log-router", "condition": "START" }
+      ]
+    },
+    {
+      "name": "log-router",
+      "image": "amazon/aws-for-fluent-bit:stable",
+      "essential": true,
+      "firelensConfiguration": {
+        "type": "fluentbit",
+        "options": {
+          "config-file-type": "file",
+          "config-file-value": "/fluent-bit/configs/parse-json.conf"
+        }
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/api-log-router",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "firelens"
+        }
+      },
+      "memoryReservation": 50
+    }
+  ]
+}

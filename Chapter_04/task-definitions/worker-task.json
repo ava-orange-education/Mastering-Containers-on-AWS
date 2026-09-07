@@ -1,0 +1,36 @@
+{
+  "family": "queue-worker",
+  "taskRoleArn": "arn:aws:iam::123456789012:role/ecs-worker-task-role",
+  "executionRoleArn": "arn:aws:iam::123456789012:role/ecsTaskExecutionRole",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "containerDefinitions": [
+    {
+      "name": "worker",
+      "image": "123456789012.dkr.ecr.us-east-1.amazonaws.com/queue-worker:1.0.0",
+      "essential": true,
+      "environment": [
+        { "name": "QUEUE_URL", "value": "https://sqs.us-east-1.amazonaws.com/123456789012/tasks-queue" },
+        { "name": "WORKER_CONCURRENCY", "value": "4" },
+        { "name": "VISIBILITY_TIMEOUT", "value": "300" }
+      ],
+      "secrets": [
+        {
+          "name": "DATABASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:123456789012:secret:worker/database-XyZaB"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/queue-worker",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "worker"
+        }
+      },
+      "readonlyRootFilesystem": true
+    }
+  ]
+}

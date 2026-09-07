@@ -1,0 +1,36 @@
+# Mixed-Mode EKS Cluster with Linux and Windows Node Groups
+# Book: Mastering Container Architectures on AWS - Chapter 12
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+metadata:
+  name: mixed-mode-cluster
+  region: us-east-1
+  version: "1.31"
+
+managedNodeGroups:
+  # Linux nodes for system components and Linux workloads
+  - name: linux-nodes
+    instanceType: m6i.xlarge
+    desiredCapacity: 3
+    minSize: 2
+    maxSize: 10
+    privateNetworking: true
+    labels:
+      os: linux
+      role: application
+
+  # Windows nodes for .NET Framework applications
+  - name: windows-nodes
+    instanceType: m6i.xlarge
+    desiredCapacity: 2
+    minSize: 1
+    maxSize: 6
+    privateNetworking: true
+    amiFamily: WindowsServer2022FullContainer
+    labels:
+      os: windows
+      role: dotnet-app
+    taints:
+      - key: os
+        value: windows
+        effect: NoSchedule

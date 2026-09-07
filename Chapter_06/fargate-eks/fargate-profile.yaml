@@ -1,0 +1,19 @@
+# eksctl Fargate Profile for EKS
+# Pods matching this profile's namespace and labels run on Fargate
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+metadata:
+  name: production-cluster
+  region: us-east-1
+fargateProfiles:
+  - name: application-profile
+    selectors:
+      - namespace: production
+        labels:
+          compute: fargate
+      - namespace: staging
+  - name: monitoring-profile
+    selectors:
+      - namespace: monitoring
+        labels:
+          compute: fargate

@@ -1,0 +1,53 @@
+# AWS Budgets for Container Cost Governance
+# Book: Mastering Container Architectures on AWS - Chapter 14
+AWSTemplateFormatVersion: "2010-09-09"
+Description: AWS Budgets for Container Platform Cost Governance
+
+Parameters:
+  MonthlyBudgetAmount:
+    Type: Number
+    Default: 10000
+    Description: Monthly budget in USD
+  AlertEmail:
+    Type: String
+    Default: platform-team@example.com
+
+Resources:
+  ContainerBudget:
+    Type: AWS::Budgets::Budget
+    Properties:
+      Budget:
+        BudgetName: container-platform-monthly
+        BudgetType: COST
+        TimeUnit: MONTHLY
+        BudgetLimit:
+          Amount: !Ref MonthlyBudgetAmount
+          Unit: USD
+        CostFilters:
+          TagKeyValue:
+            - "user:cost-center$platform-engineering"
+      NotificationsWithSubscribers:
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: 80
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref AlertEmail
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: 100
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref AlertEmail
+        - Notification:
+            NotificationType: FORECASTED
+            ComparisonOperator: GREATER_THAN
+            Threshold: 120
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref AlertEmail
